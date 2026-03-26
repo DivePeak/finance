@@ -2,6 +2,8 @@
 
 A personal investment portfolio tracker for ASX (Australian Securities Exchange) assets. Tracks holdings, transactions, performance, and sector/market exposure across a portfolio.
 
+> **Personal use only.** This project uses [yfinance](https://github.com/ranaroussi/yfinance) to retrieve market data from Yahoo Finance. Yahoo Finance's [Terms of Service](https://legal.yahoo.com/us/en/yahoo/terms/osd/index.html) prohibit commercial use of their data. This tool is intended for personal portfolio tracking only and should not be used for any commercial purpose.
+
 ## Features
 
 - **Portfolio dashboard** — current holdings, market value, cost base, unrealised P&L, XIRR
