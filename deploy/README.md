@@ -1,6 +1,6 @@
 # Deployment
 
-## Local dev (Windows)
+## Local dev
 ```
 dev
 ```
@@ -8,19 +8,23 @@ From `finance/` root → http://localhost:8003
 
 ---
 
-## Build & push image (WSL - local)
+## Build & push image (WSL)
 
 First time only — enable ARM64 emulation in WSL:
 ```bash
 sudo apt-get install -y qemu-user-static binfmt-support
+sudo update-binfmts --install qemu-aarch64 /usr/bin/qemu-aarch64-static \
+    --magic '\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7\x00' \
+    --mask '\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff' \
+    --credentials yes --fix-binary yes
 ```
 
 Each release:
 ```bash
-cd /mnt/c/Users/tim/PycharmProjects/finance
-podman build --platform linux/arm64 -t docker.io/divepeak/finance:latest .
+cd /path/to/finance
 podman login docker.io
-podman push docker.io/divepeak/finance:latest
+podman build --platform linux/arm64 -t docker.io/<your-username>/finance:latest .
+podman push docker.io/<your-username>/finance:latest
 ```
 > First build is slow (~15 min) due to Playwright/Chromium. Subsequent builds are fast if
 > `pyproject.toml` / `uv.lock` haven't changed.
@@ -29,39 +33,38 @@ podman push docker.io/divepeak/finance:latest
 
 ## First-time Pi setup
 
-**WSL - local:** copy the database and Quadlet service file:
+**Local:** copy the database and Quadlet service file:
 ```bash
-cd /mnt/c/Users/tim/PycharmProjects/finance
-rsync -avz database_v2.db tim@192.168.68.83:/srv/finance/finance.db
-rsync -avz deploy/finance.container tim@192.168.68.83:/home/tim/.config/containers/systemd/
+rsync -avz database_v2.db <user>@<pi-ip>:/srv/finance/finance.db
+rsync -avz deploy/finance.container <user>@<pi-ip>:/home/<user>/.config/containers/systemd/
 ```
 
-**WSL - Pi (ssh tim@192.168.68.83):** pull the image and start the service:
+**Pi (via SSH):** pull the image and start the service:
 ```bash
 mkdir -p /srv/finance
+sudo chown <user>:<user> /srv/finance
 mkdir -p ~/.config/containers/systemd
-podman pull docker.io/divepeak/finance:latest
+podman pull docker.io/<your-username>/finance:latest
 systemctl --user daemon-reload
 systemctl --user start finance.service
-loginctl enable-linger tim          # run once — allows service to start without login
+loginctl enable-linger <user>          # run once — allows service to start without login
 ```
 
-App is available at http://192.168.68.83:8003
+Update `finance.container` with your Docker Hub username and data path before deploying.
 
 ---
 
 ## Update
 
-**WSL - local:** build, push, and restart:
+**Local:**
 ```bash
-cd /mnt/c/Users/tim/PycharmProjects/finance
-podman build --platform linux/arm64 -t docker.io/divepeak/finance:latest .
-podman push docker.io/divepeak/finance:latest
+podman build --platform linux/arm64 -t docker.io/<your-username>/finance:latest .
+podman push docker.io/<your-username>/finance:latest
 ```
 
-**WSL - Pi:** pull and restart:
+**Pi:**
 ```bash
-podman pull docker.io/divepeak/finance:latest
+podman pull docker.io/<your-username>/finance:latest
 systemctl --user restart finance.service
 ```
 
