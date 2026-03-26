@@ -21,4 +21,4 @@ Thumbs.db
 .output.txt
 
 # Local data files
-data.csv
+# data.csv is committed as a sanitised example

@@ -1,8 +1,11 @@
 import time
+import tempfile
+import configparser
+from unittest.mock import patch
 from main import app
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlmodel import create_engine, SQLModel, Session
+from sqlmodel import create_engine, SQLModel, Session, select
 from database import get_session
 from contextlib import asynccontextmanager
 import os
@@ -348,6 +351,191 @@ def test_delete_ticker():
     tickers = response.json()
     assert not any(t["symbol"] == TEST_SYMBOL for t in tickers)
 
+# ---------------------------------------------------------------------------
+# Transactions
+# ---------------------------------------------------------------------------
+
+def test_list_transactions():
+    response = client.get("/transactions/")
+    assert response.status_code == 200
+    assert "Transactions" in response.text
+
+
+def test_add_transaction_buy_auto_calculates_negative_amount():
+    response = client.post("/transactions/", data={
+        "transaction_date": "2024-03-01",
+        "transaction_type": "Buy",
+        "symbol": "VAS",
+        "units": "10",
+        "price": "100.00",
+        "fee": "10.00",
+    })
+    assert response.status_code == 200
+    with Session(engine) as session:
+        tx = session.exec(
+            select(Transaction)
+            .where(Transaction.transaction_type == "Buy")
+            .order_by(Transaction.id.desc())
+        ).first()
+        assert tx is not None
+        assert tx.amount == -(10 * 100.00 + 10.00)  # -1010.0
+
+
+def test_add_transaction_sell_auto_calculates_positive_amount():
+    response = client.post("/transactions/", data={
+        "transaction_date": "2024-03-02",
+        "transaction_type": "Sell",
+        "symbol": "VAS",
+        "units": "5",
+        "price": "110.00",
+        "fee": "10.00",
+    })
+    assert response.status_code == 200
+    with Session(engine) as session:
+        tx = session.exec(
+            select(Transaction)
+            .where(Transaction.transaction_type == "Sell")
+            .order_by(Transaction.id.desc())
+        ).first()
+        assert tx is not None
+        assert tx.amount == 5 * 110.00 - 10.00  # 540.0
+
+
+def test_add_transaction_withdrawal_coerces_to_negative():
+    """User enters a positive amount; router must store it as negative."""
+    response = client.post("/transactions/", data={
+        "transaction_date": "2024-03-03",
+        "transaction_type": "Withdrawal",
+        "amount": "500.00",
+    })
+    assert response.status_code == 200
+    with Session(engine) as session:
+        tx = session.exec(
+            select(Transaction)
+            .where(Transaction.transaction_type == "Withdrawal")
+            .order_by(Transaction.id.desc())
+        ).first()
+        assert tx is not None
+        assert tx.amount == -500.00
+
+
+def test_add_transaction_deposit_stays_positive():
+    response = client.post("/transactions/", data={
+        "transaction_date": "2024-03-04",
+        "transaction_type": "Deposit",
+        "amount": "1000.00",
+    })
+    assert response.status_code == 200
+    with Session(engine) as session:
+        tx = session.exec(
+            select(Transaction)
+            .where(Transaction.transaction_type == "Deposit")
+            .order_by(Transaction.id.desc())
+        ).first()
+        assert tx is not None
+        assert tx.amount == 1000.00
+
+
+def test_add_transaction_dividend_stays_positive():
+    response = client.post("/transactions/", data={
+        "transaction_date": "2024-03-05",
+        "transaction_type": "Dividend",
+        "symbol": "VAS",
+        "amount": "25.50",
+    })
+    assert response.status_code == 200
+    with Session(engine) as session:
+        tx = session.exec(
+            select(Transaction)
+            .where(Transaction.transaction_type == "Dividend")
+            .order_by(Transaction.id.desc())
+        ).first()
+        assert tx is not None
+        assert tx.amount == 25.50
+
+
+def test_delete_transaction():
+    # Add a transaction to delete
+    client.post("/transactions/", data={
+        "transaction_date": "2024-03-06",
+        "transaction_type": "Deposit",
+        "amount": "42.00",
+    })
+    with Session(engine) as session:
+        tx = session.exec(
+            select(Transaction).order_by(Transaction.id.desc())
+        ).first()
+        tx_id = tx.id
+
+    response = client.delete(f"/transactions/{tx_id}/")
+    assert response.status_code == 200
+
+    with Session(engine) as session:
+        assert session.get(Transaction, tx_id) is None
+
+
+# ---------------------------------------------------------------------------
+# Tickers — form-based add and portfolio update
+# ---------------------------------------------------------------------------
+
+def test_add_ticker_via_form():
+    response = client.post("/tickers/", data={"symbol": "CBA"})
+    assert response.status_code == 200
+    with Session(engine) as session:
+        ticker = session.get(Ticker, "CBA.AX")
+        assert ticker is not None
+
+
+def test_update_ticker_portfolio():
+    # Ensure the ticker exists
+    client.post("/tickers/FORM.AX")
+    response = client.post("/tickers/FORM.AX/update_portfolio/", data={"portfolio": "Growth"})
+    assert response.status_code == 204
+    with Session(engine) as session:
+        ticker = session.get(Ticker, "FORM.AX")
+        assert ticker.portfolio == "Growth"
+
+
+def test_update_ticker_portfolio_clears_value():
+    client.post("/tickers/FORM.AX")
+    client.post("/tickers/FORM.AX/update_portfolio/", data={"portfolio": "Growth"})
+    response = client.post("/tickers/FORM.AX/update_portfolio/", data={})  # no portfolio field
+    assert response.status_code == 204
+    with Session(engine) as session:
+        ticker = session.get(Ticker, "FORM.AX")
+        assert ticker.portfolio is None
+
+
+def test_update_ticker_portfolio_not_found():
+    response = client.post("/tickers/GHOST.AX/update_portfolio/", data={"portfolio": "Growth"})
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+
+def test_get_settings():
+    response = client.get("/settings/")
+    assert response.status_code == 200
+    assert "3600" in response.text  # default stale time
+
+
+def test_update_settings():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.cfg', delete=False) as f:
+        f.write("[cache]\nstale_time_seconds = 3600\n")
+        tmp_path = f.name
+    try:
+        with patch("routers.settings.CONFIG_PATH", tmp_path):
+            response = client.post("/settings/", data={"stale_time": "7200"}, follow_redirects=True)
+            assert response.status_code == 200
+            config = configparser.ConfigParser()
+            config.read(tmp_path)
+            assert config.get('cache', 'stale_time_seconds') == '7200'
+    finally:
+        os.remove(tmp_path)
+
+
 if __name__ == "__main__":
     # Quick manual run
     try:
@@ -371,6 +559,32 @@ if __name__ == "__main__":
         print("Stale price background update test passed")
         test_delete_ticker()
         print("Delete ticker test passed")
+        test_list_transactions()
+        print("List transactions test passed")
+        test_add_transaction_buy_auto_calculates_negative_amount()
+        print("Add transaction buy test passed")
+        test_add_transaction_sell_auto_calculates_positive_amount()
+        print("Add transaction sell test passed")
+        test_add_transaction_withdrawal_coerces_to_negative()
+        print("Add transaction withdrawal sign coercion test passed")
+        test_add_transaction_deposit_stays_positive()
+        print("Add transaction deposit test passed")
+        test_add_transaction_dividend_stays_positive()
+        print("Add transaction dividend test passed")
+        test_delete_transaction()
+        print("Delete transaction test passed")
+        test_add_ticker_via_form()
+        print("Add ticker via form test passed")
+        test_update_ticker_portfolio()
+        print("Update ticker portfolio test passed")
+        test_update_ticker_portfolio_clears_value()
+        print("Update ticker portfolio clear test passed")
+        test_update_ticker_portfolio_not_found()
+        print("Update ticker portfolio not found test passed")
+        test_get_settings()
+        print("Get settings test passed")
+        test_update_settings()
+        print("Update settings test passed")
     finally:
         # Cleanup
         engine.dispose() # Ensure all connections are closed
