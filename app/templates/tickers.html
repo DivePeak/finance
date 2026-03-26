@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">Tickers</h1>
+
+<div class="box">
+    <form hx-post="/tickers/" hx-target="#ticker-list" hx-swap="outerHTML">
+        <div class="field has-addons">
+            <div class="control">
+                <input class="input" type="text" name="symbol" placeholder="Ticker (e.g. VAS)" required>
+            </div>
+            <div class="control">
+                <button class="button is-info" type="submit">
+                    Add Ticker
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% include "_ticker_list.html" %}
+
+{% if missing_breakdowns %}
+<div class="notification is-warning mt-5">
+    <h3 class="subtitle">Attention Required</h3>
+    <p>The following tickers are missing sector/market breakdown data:</p>
+    <ul>
+        {% for ticker in missing_breakdowns %}
+        <li>
+            <strong>{{ ticker.symbol }}</strong> ({{ ticker.name or 'Unknown' }}) 
+            <a href="/tickers/{{ ticker.symbol }}/breakdown" class="is-size-7 ml-2">Fix now</a>
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="is-size-7 mt-2">Exposure calculations for the portfolio will be incomplete until these are updated.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">Portfolio Exposure Breakdown</h1>
+
+<div class="columns">
+    <!-- Sector Exposure -->
+    <div class="column is-half">
+        <div class="box">
+            <h2 class="subtitle">Sector Breakdown</h2>
+            <table class="table is-fullwidth is-striped">
+                <thead>
+                    <tr>
+                        <th>Sector</th>
+                        <th class="has-text-right">Value ($)</th>
+                        <th class="has-text-right">Allocation (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sector, value in sectors %}
+                    <tr>
+                        <td>{{ sector }}</td>
+                        <td class="has-text-right">{{ "%.2f"|format(value) }}</td>
+                        <td class="has-text-right">{{ "%.2f"|format(value / total_value * 100) if total_value > 0 else 0 }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th class="has-text-right">{{ "%.2f"|format(total_value) }}</th>
+                        <th class="has-text-right">100.00%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Market Exposure -->
+    <div class="column is-half">
+        <div class="box">
+            <h2 class="subtitle">Market Breakdown</h2>
+            <table class="table is-fullwidth is-striped">
+                <thead>
+                    <tr>
+                        <th>Market / Region</th>
+                        <th class="has-text-right">Value ($)</th>
+                        <th class="has-text-right">Allocation (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if aus_val > 0 %}
+                    <tr>
+                        <td>Australia</td>
+                        <td class="has-text-right">{{ "%.2f"|format(aus_val) }}</td>
+                        <td class="has-text-right">{{ "%.2f"|format(aus_val / total_value * 100) if total_value > 0 else 0 }}%</td>
+                    </tr>
+                    {% endif %}
+                    {% if us_val > 0 %}
+                    <tr>
+                        <td>US</td>
+                        <td class="has-text-right">{{ "%.2f"|format(us_val) }}</td>
+                        <td class="has-text-right">{{ "%.2f"|format(us_val / total_value * 100) if total_value > 0 else 0 }}%</td>
+                    </tr>
+                    {% endif %}
+                    {% if other_total > 0 %}
+                    <tr>
+                        <td>
+                            Other 
+                            <button class="button is-small is-ghost p-0 h-auto" onclick="toggleOther()">
+                                <span id="other-toggle-icon">▶</span>
+                            </button>
+                        </td>
+                        <td class="has-text-right">{{ "%.2f"|format(other_total) }}</td>
+                        <td class="has-text-right">{{ "%.2f"|format(other_total / total_value * 100) if total_value > 0 else 0 }}%</td>
+                    </tr>
+                    {% for m, v in other_markets %}
+                    <tr class="other-market-row is-hidden has-background-light">
+                        <td class="pl-5"><i>{{ m }}</i></td>
+                        <td class="has-text-right">{{ "%.2f"|format(v) }}</td>
+                        <td class="has-text-right">{{ "%.2f"|format(v / total_value * 100) if total_value > 0 else 0 }}%</td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th class="has-text-right">{{ "%.2f"|format(total_value) }}</th>
+                        <th class="has-text-right">100.00%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="buttons">
+    <a href="/portfolio" class="button is-link">Back to Portfolio</a>
+</div>
+
+<script>
+function toggleOther() {
+    const rows = document.querySelectorAll('.other-market-row');
+    const icon = document.getElementById('other-toggle-icon');
+    rows.forEach(row => {
+        row.classList.toggle('is-hidden');
+    });
+    if (icon.innerText === '▶') {
+        icon.innerText = '▼';
+    } else {
+        icon.innerText = '▶';
+    }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">Portfolio Dashboard</h1>
+
+<div id="dashboard-container">
+{% include "dashboard.html" %}
+</div>
+
+{% set grouped_holdings = {} %}
+{% for h in holdings %}
+    {% set p = h.portfolio %}
+    {% if p not in grouped_holdings %}
+        {% set _ = grouped_holdings.update({p: []}) %}
+    {% endif %}
+    {% set _ = grouped_holdings[p].append(h) %}
+{% endfor %}
+
+{% for portfolio_name in grouped_holdings.keys()|sort %}
+<div class="box">
+    <h2 class="subtitle is-4">{{ portfolio_name }}</h2>
+    <table class="table is-fullwidth is-striped is-hoverable">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Name</th>
+                <th class="has-text-right">Units</th>
+                <th class="has-text-right">Current Price</th>
+                <th class="has-text-right">Market Value</th>
+                <th class="has-text-right">Cost Base</th>
+                <th class="has-text-right">Realized P/L</th>
+                <th class="has-text-right">Dividends</th>
+                <th class="has-text-right">Unrealized P/L</th>
+                <th class="has-text-right">P/L %</th>
+                <th class="has-text-right">XIRR</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in grouped_holdings[portfolio_name]|sort(attribute='symbol') %}
+            <tr class="{% if h.xirr >= 0 %}has-background-success-light{% else %}has-background-danger-light{% endif %}" data-symbol="{{ h.symbol }}" data-units="{{ h.units }}" data-cost-base="{{ h.cost_base }}">
+                <td><strong>{{ h.symbol }}</strong></td>
+                <td>{{ h.name }}</td>
+                <td class="has-text-right">{{ "%.4f"|format(h.units) }}</td>
+                <td class="has-text-right price-cell">
+                    {% if h.is_stale %}
+                        <span class="has-text-grey-light" title="Price is stale (older than configured stale time)">
+                            *$<span class="price-value">{{ "%.2f"|format(h.current_price) }}</span>
+                        </span>
+                    {% else %}
+                        $<span class="price-value">{{ "%.2f"|format(h.current_price) }}</span>
+                    {% endif %}
+                </td>
+                <td class="has-text-right market-value-cell">${{ "%.2f"|format(h.market_value) }}</td>
+                <td class="has-text-right">${{ "%.2f"|format(h.cost_base) }}</td>
+                <td class="has-text-right">${{ "%.2f"|format(h.realized_pl) }}</td>
+                <td class="has-text-right">${{ "%.2f"|format(h.total_dividends) }}</td>
+                <td class="has-text-right unrealized-pl-cell">
+                    ${{ "%.2f"|format(h.unrealized_pl) }}
+                </td>
+                <td class="has-text-right unrealized-pl-pct-cell">
+                    {{ "%.2f"|format(h.unrealized_pl_pct) }}%
+                </td>
+                <td class="has-text-right">
+                    {{ "%.2f"|format(h.xirr * 100) }}%
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endfor %}
+
+<script>
+    // Connect to WebSocket for real-time price updates
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'price_update') {
+            updateHolding(data.symbol);
+        }
+    };
+
+    ws.onerror = function(error) {
+        console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = function() {
+        console.log('WebSocket connection closed');
+    };
+
+    async function updateHolding(symbol) {
+        // Fetch the updated row from the server
+        const rowResponse = await fetch(`/portfolio/holding/${symbol}`);
+        if (!rowResponse.ok) return;
+
+        const newRowHTML = await rowResponse.text();
+
+        // Find and replace the existing row
+        const existingRow = document.querySelector(`tr[data-symbol="${symbol}"]`);
+        if (existingRow) {
+            const temp = document.createElement('tbody');
+            temp.innerHTML = newRowHTML;
+            const newRow = temp.firstElementChild;
+
+            existingRow.replaceWith(newRow);
+        }
+
+        // Refresh the entire dashboard
+        const dashboardResponse = await fetch('/portfolio/dashboard');
+        if (dashboardResponse.ok) {
+            const dashboardHTML = await dashboardResponse.text();
+            const dashboardContainer = document.getElementById('dashboard-container');
+            if (dashboardContainer) {
+                dashboardContainer.innerHTML = dashboardHTML;
+            }
+        }
+    }
+</script>
+{% endblock %}

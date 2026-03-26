@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">Settings</h1>
+
+<div class="box">
+    <form action="/settings/" method="post">
+        <div class="field">
+            <label class="label">Cache Stale Time (seconds)</label>
+            <div class="control">
+                <input class="input" type="number" name="stale_time" value="{{ stale_time }}">
+            </div>
+            <p class="help">How long to wait before refreshing ticker prices from Yahoo Finance.</p>
+        </div>
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-primary" type="submit">Save Settings</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+[Unit]
+Description=Finance Portfolio Tracker
+After=network-online.target
+
+[Container]
+Image=docker.io/divepeak/finance:latest
+PublishPort=8003:8003
+Volume=/srv/finance:/data:Z
+Environment=DATABASE_PATH=/data/finance.db
+
+[Service]
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

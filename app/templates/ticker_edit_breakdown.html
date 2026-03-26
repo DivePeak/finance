@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="/tickers">Tickers</a></li>
+    <li class="is-active"><a href="#" aria-current="page">{{ ticker.symbol }} Breakdown</a></li>
+  </ul>
+</nav>
+
+<h1 class="title">Edit Breakdown: {{ ticker.symbol }}</h1>
+<h2 class="subtitle">{{ ticker.name }} ({{ ticker.asset_type }})</h2>
+
+{% if scraped is defined %}
+    {% if scraped %}
+    <div class="notification is-success">
+        Data successfully fetched from ASX. Please review and save.
+    </div>
+    {% else %}
+    <div class="notification is-danger">
+        Failed to fetch data from ASX. Ticker might not be an ETP or ASX might be blocking requests.
+    </div>
+    {% endif %}
+{% endif %}
+
+<div class="box">
+    {% if ticker.asset_type == 'ETF' or ticker.symbol.endswith('.AX') %}
+    <div class="block">
+        <form action="/tickers/{{ ticker.symbol }}/scrape_asx" method="POST">
+            <button type="submit" class="button is-warning" id="fetch-asx-btn" onclick="this.classList.add('is-loading')">
+                Fetch Breakdown from ASX Website
+            </button>
+            <p class="help">Note: This uses an automated browser and may take 10-20 seconds.</p>
+        </form>
+    </div>
+    <hr>
+    {% endif %}
+    
+    <form action="/tickers/{{ ticker.symbol }}/breakdown" method="POST">
+        <div class="columns">
+            <!-- Sector Breakdown -->
+            <div class="column is-half">
+                <h3 class="subtitle is-5">Sector Breakdown (%)</h3>
+                <div id="sector-rows">
+                    {% if ticker.sector_breakdown %}
+                        {% for sector, percent in ticker.sector_breakdown.items() %}
+                        <div class="field is-horizontal">
+                            <div class="field-body">
+                                <div class="field">
+                                    <p class="control is-expanded">
+                                        <input class="input" type="text" name="sector_name[]" value="{{ sector }}" placeholder="Sector Name" required>
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" name="sector_percent[]" value="{{ percent }}" step="0.01" min="0" max="100" placeholder="%" required>
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <p class="control">
+                                        <button type="button" class="button is-danger" onclick="this.closest('.field.is-horizontal').remove()">Remove</button>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <button type="button" class="button is-small is-info mt-2" onclick="addRow('sector-rows', 'sector_name[]', 'sector_percent[]')">Add Sector</button>
+            </div>
+
+            <!-- Market Breakdown -->
+            <div class="column is-half">
+                <h3 class="subtitle is-5">Market Breakdown (%)</h3>
+                <div id="market-rows">
+                    {% if ticker.market_breakdown %}
+                        {% for market, percent in ticker.market_breakdown.items() %}
+                        <div class="field is-horizontal">
+                            <div class="field-body">
+                                <div class="field">
+                                    <p class="control is-expanded">
+                                        <input class="input" type="text" name="market_name[]" value="{{ market }}" placeholder="Market/Region" required>
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" name="market_percent[]" value="{{ percent }}" step="0.01" min="0" max="100" placeholder="%" required>
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <p class="control">
+                                        <button type="button" class="button is-danger" onclick="this.closest('.field.is-horizontal').remove()">Remove</button>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <button type="button" class="button is-small is-info mt-2" onclick="addRow('market-rows', 'market_name[]', 'market_percent[]')">Add Market</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="field is-grouped">
+            <div class="control">
+                <button type="submit" class="button is-primary">Save Changes</button>
+            </div>
+            <div class="control">
+                <a href="/tickers" class="button is-light">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function addRow(containerId, nameAttr, percentAttr) {
+    const container = document.getElementById(containerId);
+    const div = document.createElement('div');
+    div.className = 'field is-horizontal';
+    div.innerHTML = `
+        <div class="field-body">
+            <div class="field">
+                <p class="control is-expanded">
+                    <input class="input" type="text" name="${nameAttr}" placeholder="Name" required>
+                </p>
+            </div>
+            <div class="field">
+                <p class="control">
+                    <input class="input" type="number" name="${percentAttr}" step="0.01" min="0" max="100" placeholder="%" required>
+                </p>
+            </div>
+            <div class="field">
+                <p class="control">
+                    <button type="button" class="button is-danger" onclick="this.closest('.field.is-horizontal').remove()">Remove</button>
+                </p>
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+}
+</script>
+{% endblock %}

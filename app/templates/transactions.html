@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">Transactions</h1>
+
+<div class="level">
+    <div class="level-item has-text-centered">
+        <div>
+            <p class="heading">CDIA Balance</p>
+            <p id="cdia-balance-value" class="title {% if cdia_balance < 0 %}has-text-danger{% else %}has-text-success{% endif %}">
+                ${{ "%.2f"|format(cdia_balance) }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="box">
+    <h2 class="subtitle">Add Transaction</h2>
+    <form hx-post="/transactions/" hx-target="#transaction-list" hx-swap="outerHTML">
+        <div class="columns">
+            <div class="column">
+                <div class="field">
+                    <label class="label">Symbol</label>
+                    <div class="control">
+                        <input class="input" type="text" name="symbol" list="ticker-datalist" placeholder="e.g. VAS">
+                        <datalist id="ticker-datalist">
+                            {% for ticker in tickers %}
+                            <option value="{{ ticker.symbol }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Date</label>
+                    <div class="control">
+                        <input class="input" type="date" name="transaction_date" required>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Type</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="transaction_type" id="transaction-type" required onchange="updateAmountSign()">
+                                <option value="Buy">Buy</option>
+                                <option value="Sell">Sell</option>
+                                <option value="Payment">Payment</option>
+                                <option value="Dividend">Dividend</option>
+                                <option value="Reinvestment">Reinvestment</option>
+                                <option value="Deposit">Deposit</option>
+                                <option value="Withdrawal">Withdrawal</option>
+                                <option value="Interest">Interest</option>
+                                <option value="ADJ">ADJ</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column">
+                <div class="field">
+                    <label class="label">Units</label>
+                    <div class="control">
+                        <input class="input" type="number" step="any" name="units" placeholder="0.0">
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Price</label>
+                    <div class="control">
+                        <input class="input" type="number" step="any" name="price" placeholder="0.0">
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Fee</label>
+                    <div class="control">
+                        <input class="input" type="number" step="any" name="fee" value="0.0">
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">Amount</label>
+                    <div class="field has-addons">
+                        <div class="control">
+                            <a id="amount-sign" class="button is-static has-text-danger">−</a>
+                        </div>
+                        <div class="control is-expanded">
+                            <input class="input" type="number" step="any" min="0" name="amount" placeholder="Auto-calculated if Buy/Sell">
+                        </div>
+                    </div>
+                    <p class="help" id="amount-help">Enter the absolute value — sign is applied automatically.</p>
+                </div>
+            </div>
+        </div>
+        <div class="field">
+            <div class="control">
+                <button class="button is-info" type="submit">Add Transaction</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% include "_transaction_list.html" %}
+
+<script>
+const DEBIT_TYPES  = ['Buy', 'Withdrawal'];
+const CREDIT_TYPES = ['Sell', 'Dividend', 'Deposit', 'Interest', 'Payment'];
+
+function updateAmountSign() {
+    const type    = document.getElementById('transaction-type').value;
+    const signEl  = document.getElementById('amount-sign');
+    const helpEl  = document.getElementById('amount-help');
+
+    if (DEBIT_TYPES.includes(type)) {
+        signEl.textContent  = '−';
+        signEl.className    = 'button is-static has-text-danger';
+        helpEl.textContent  = 'Debit — will be stored as a negative amount.';
+    } else if (CREDIT_TYPES.includes(type)) {
+        signEl.textContent  = '+';
+        signEl.className    = 'button is-static has-text-success';
+        helpEl.textContent  = 'Credit — will be stored as a positive amount.';
+    } else {
+        signEl.textContent  = '±';
+        signEl.className    = 'button is-static';
+        helpEl.textContent  = 'Enter the signed amount manually for this type.';
+    }
+}
+
+updateAmountSign();
+</script>
+{% endblock %}

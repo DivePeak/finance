@@ -1,0 +1,27 @@
+<tr class="{% if h.xirr >= 0 %}has-background-success-light{% else %}has-background-danger-light{% endif %}" data-symbol="{{ h.symbol }}" data-units="{{ h.units }}" data-cost-base="{{ h.cost_base }}">
+    <td><strong>{{ h.symbol }}</strong></td>
+    <td>{{ h.name }}</td>
+    <td class="has-text-right">{{ "%.4f"|format(h.units) }}</td>
+    <td class="has-text-right price-cell">
+        {% if h.is_stale %}
+            <span class="has-text-grey-light" title="Price is stale (older than configured stale time)">
+                *$<span class="price-value">{{ "%.2f"|format(h.current_price) }}</span>
+            </span>
+        {% else %}
+            $<span class="price-value">{{ "%.2f"|format(h.current_price) }}</span>
+        {% endif %}
+    </td>
+    <td class="has-text-right market-value-cell">${{ "%.2f"|format(h.market_value) }}</td>
+    <td class="has-text-right">${{ "%.2f"|format(h.cost_base) }}</td>
+    <td class="has-text-right">${{ "%.2f"|format(h.realized_pl) }}</td>
+    <td class="has-text-right">${{ "%.2f"|format(h.total_dividends) }}</td>
+    <td class="has-text-right unrealized-pl-cell">
+        ${{ "%.2f"|format(h.unrealized_pl) }}
+    </td>
+    <td class="has-text-right unrealized-pl-pct-cell">
+        {{ "%.2f"|format(h.unrealized_pl_pct) }}%
+    </td>
+    <td class="has-text-right">
+        {{ "%.2f"|format(h.xirr * 100) }}%
+    </td>
+</tr>

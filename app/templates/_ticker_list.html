@@ -1,0 +1,63 @@
+<div id="ticker-list">
+    <table class="table is-fullwidth is-striped">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Name</th>
+                <th>Portfolio</th>
+                <th class="has-text-right">Price</th>
+                <th>Type</th>
+                <th>Currency</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticker in tickers %}
+            <tr>
+                <td>{{ ticker.symbol }}</td>
+                <td>{{ ticker.name or 'Pending...' }}</td>
+                <td>
+                    <div class="field">
+                        <div class="control">
+                            <input class="input is-small" type="text" 
+                                   name="portfolio" 
+                                   value="{{ ticker.portfolio or '' }}" 
+                                   placeholder="Add to portfolio..."
+                                   hx-post="/tickers/{{ ticker.symbol }}/update_portfolio/"
+                                   hx-trigger="keyup[keyCode==13], change"
+                                   hx-swap="none">
+                        </div>
+                    </div>
+                </td>
+                <td class="has-text-right">
+                    {% if ticker.last_updated and stale_time is defined and (now - ticker.last_updated).total_seconds() > stale_time %}
+                        <span class="has-text-grey-light" title="Price is stale">
+                            *{{ "%.2f"|format(ticker.current_price) if ticker.current_price else '...' }}
+                        </span>
+                    {% else %}
+                        {{ "%.2f"|format(ticker.current_price) if ticker.current_price else '...' }}
+                    {% endif %}
+                </td>
+                <td>{{ ticker.asset_type or '...' }}</td>
+                <td>{{ ticker.currency }}</td>
+                <td>{{ ticker.last_updated.strftime('%Y-%m-%d %H:%M:%S') if ticker.last_updated else 'Never' }}</td>
+                <td>
+                    <div class="buttons">
+                        <a href="/tickers/{{ ticker.symbol }}/breakdown" class="button is-link is-small" title="Edit sector/market breakdown">
+                            Edit Breakdown
+                        </a>
+                        <button class="button is-danger is-small" 
+                                hx-delete="/tickers/{{ ticker.symbol }}/" 
+                                hx-target="#ticker-list" 
+                                hx-swap="outerHTML"
+                                hx-confirm="Are you sure you want to delete {{ ticker.symbol }}?">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

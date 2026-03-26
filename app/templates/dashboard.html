@@ -1,0 +1,47 @@
+<div class="columns" id="portfolio-dashboard">
+    <div class="column">
+        <div class="notification is-info is-light">
+            <p class="heading">Total Market Value</p>
+            <p class="title">${{ "%.2f"|format(total_market_value) }}</p>
+        </div>
+    </div>
+    <div class="column">
+        <div class="notification is-link is-light">
+            <p class="heading">Total Cost Base</p>
+            <p class="title">${{ "%.2f"|format(total_cost_base) }}</p>
+        </div>
+    </div>
+    <div class="column">
+        <div class="notification is-info is-light">
+            <p class="heading">Total Unrealized P/L</p>
+            <p class="title">${{ "%.2f"|format(total_unrealized_pl) }} ({{ "%.2f"|format(total_unrealized_pl_pct) }}%)</p>
+        </div>
+    </div>
+    <div class="column">
+        <div class="notification {% if total_xirr >= 0 %}has-background-success-light{% else %}has-background-danger-light{% endif %}">
+            <p class="heading">Total Portfolio XIRR</p>
+            <p class="title">{{ "%.2f"|format(total_xirr * 100) }}%</p>
+        </div>
+    </div>
+</div>
+
+<div class="columns">
+    <div class="column">
+        <div class="notification is-info is-light">
+            <p class="heading">Total Realized P/L</p>
+            <p class="title">${{ "%.2f"|format(total_realized_pl) }}</p>
+        </div>
+    </div>
+    <div class="column">
+        <div class="notification is-primary is-light">
+            <p class="heading">Total Dividends</p>
+            <p class="title">${{ "%.2f"|format(total_dividends) }}</p>
+        </div>
+    </div>
+    <div class="column">
+        <div class="notification is-link is-light">
+            <p class="heading">Total Gain (Incl Div/Realized)</p>
+            <p class="title">${{ "%.2f"|format(total_gain) }} ({{ "%.2f"|format(total_gain_pct) }}%)</p>
+        </div>
+    </div>
+</div>
